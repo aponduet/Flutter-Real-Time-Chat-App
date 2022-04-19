@@ -16,6 +16,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController inputController = TextEditingController();
   ChatModel? value;
+  // Focusnode for auto focusing Input field when open the page
+  late FocusNode myFocusNode;
   // Socket Implementation here
   final List<ChatModel> chatData = [
     // ChatModel(
@@ -80,6 +82,8 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+
+    myFocusNode = FocusNode();
     //--> call the initializeSocket method in the initState of our app.
     initializeSocket();
     print("The InitState function is Called!!");
@@ -90,6 +94,7 @@ class _ChatScreenState extends State<ChatScreen> {
     print("The Dispose function is Called!!");
     socket
         ?.disconnect(); // --> disconnects the Socket.IO client once the screen is disposed
+    myFocusNode.dispose();
     super.dispose();
   }
 
@@ -115,6 +120,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       ChatModel chatInfo = ChatModel(
         userId: chatObjData.userId,
+        userName: chatObjData.userName,
         message: chatObjData.message,
         sendTime: chatObjData.sendTime,
         seenStatus: true,
@@ -141,11 +147,14 @@ class _ChatScreenState extends State<ChatScreen> {
   sendMessage() {
     ChatModel data = ChatModel(
       userId: widget.userData.id,
+      userName: widget.userData.name,
       message: inputController.text,
       sendTime: DateTime.now().toLocal().toString().substring(0, 16),
     );
     String json = jsonEncode(data);
     socket?.emit("message", json);
+    inputController.clear();
+    myFocusNode.requestFocus();
     // print(json);
   }
 
@@ -202,11 +211,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     SizedBox(
                         width: MediaQuery.of(context).size.width - 70,
                         height: 40,
-                        // decoration: BoxDecoration(
-                        //     border: Border.all(color: Colors.green, width: 1),
-                        //     borderRadius: BorderRadius.circular(20)),
+
+                        // Message Input Area.
                         child: TextField(
                           controller: inputController,
+                          focusNode: myFocusNode,
                           decoration: InputDecoration(
                             prefixIcon: const Icon(
                               Icons.account_circle,
@@ -226,7 +235,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                             hintText: 'Type message here...',
                           ),
-                          // autofocus: false,
+                          autofocus: true,
                         ))
                   ],
                 ),
@@ -249,6 +258,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
+// Single Message Text Part (Used in ListView.Builder)
 class MyText extends StatelessWidget {
   final ChatModel chat;
   final int? senderId;
@@ -277,6 +287,23 @@ class MyText extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+
+                  // Sender Or Recever Name
+                  child: Text("${chat.userName}",
+                      style: senderId == chat.userId
+                          ? const TextStyle(
+                              fontSize: 10,
+                              color: Colors.green,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.bold)
+                          : const TextStyle(
+                              fontSize: 10,
+                              color: Colors.white,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.bold)),
+                ),
                 Text("${chat.message}"),
                 Divider(
                   color: senderId == chat.userId
@@ -286,7 +313,18 @@ class MyText extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("${chat.sendTime}"),
+                    Text("${chat.sendTime}",
+                        style: senderId == chat.userId
+                            ? const TextStyle(
+                                fontSize: 10,
+                                color: Colors.green,
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.bold)
+                            : const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.bold)),
                     Icon(
                       chat.seenStatus! ? Icons.done : Icons.done_all,
                       size: 20,
